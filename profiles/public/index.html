@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>light.profiles</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.topology.min.js"></script>
+  <style>
+    #vanta-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+
+    html,
+    body {
+      background: transparent;
+      color: #fff;
+      font-family: "Inter", sans-serif;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .wrap {
+      width: 960px;
+      height: 700px;
+      max-height: 90vh;
+      background: rgba(18, 18, 18, 0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 18px;
+      border-radius: 12px;
+      display: flex;
+      gap: 16px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+    }
+
+    #sidebar {
+      width: 260px;
+      background: rgba(15, 15, 15, 0.6);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 8px;
+      padding: 12px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-sizing: border-box;
+    }
+
+    .tabs {
+      display: flex;
+    }
+
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 6px;
+      cursor: pointer;
+      background: #1a1a1a;
+      border-radius: 6px 6px 0 0;
+    }
+
+    .tab.active {
+      background: #222;
+      font-weight: bold;
+    }
+
+    .list {
+      flex: 1;
+      overflow: auto;
+      background: #111;
+      padding: 8px;
+      border-radius: 0 0 6px 6px;
+    }
+
+    .item {
+      padding: 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 6px;
+      background: transparent;
+    }
+
+    .item:hover,
+    .item.active {
+      background: #1a1a1a;
+    }
+
+    .group-tag {
+      font-weight: 700;
+      color: #9ad;
+    }
+
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #chatBox {
+      background: #0b0b0b;
+      flex: 1;
+      border-radius: 8px;
+      padding: 12px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .msg-line {
+      display: flex;
+      margin-bottom: 8px;
+    }
+
+    .msg-line.me {
+      justify-content: flex-end;
+    }
+
+    .bubble {
+      padding: 8px 10px;
+      border-radius: 12px;
+      max-width: 70%;
+      word-wrap: break-word;
+      line-height: 1.4;
+    }
+
+    .me .bubble {
+      background: #162b3a;
+      text-align: right;
+    }
+
+    .them .bubble {
+      background: #222;
+      text-align: left;
+    }
+
+    .meta {
+      font-size: 10px;
+      opacity: 0.6;
+      margin-top: 2px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .report-btn {
+      color: #ef4444;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    .bubble:hover .report-btn {
+      opacity: 1;
+    }
+
+    input,
+    button {
+      background: #0b0b0b;
+      color: #fff;
+      border: 1px solid #222;
+      padding: 8px;
+      border-radius: 8px;
+    }
+
+    button.small {
+      font-size: 13px;
+      padding: 6px;
+    }
+
+    #controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    #status {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 12px;
+      color: #0f0;
+      background: #000;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .admin-warning-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      backdrop-filter: blur(10px);
+    }
+
+    .admin-warning-overlay.active {
+      display: flex;
+    }
+
+    .admin-warning-box {
+      background: linear-gradient(135deg, #2a1a00 0%, #1a1000 100%);
+      border: 2px solid #f59e0b;
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 500px;
+      text-align: center;
+      box-shadow: 0 0 60px rgba(245, 158, 11, 0.3);
+      animation: warningPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes warningPulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 60px rgba(245, 158, 11, 0.3);
+      }
+
+      50% {
+        box-shadow: 0 0 80px rgba(245, 158, 11, 0.5);
+      }
+    }
+
+    .admin-warning-icon {
+      font-size: 64px;
+      color: #f59e0b;
+      margin-bottom: 20px;
+    }
+
+    .admin-warning-title {
+      font-size: 28px;
+      font-weight: bold;
+      color: #f59e0b;
+      margin-bottom: 16px;
+    }
+
+    .admin-warning-message {
+      font-size: 16px;
+      color: #fcd34d;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+
+    .admin-warning-dismiss {
+      padding: 14px 40px;
+      background: #f59e0b;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .admin-warning-dismiss:hover {
+      background: #fbbf24;
+      transform: scale(1.05);
+    }
+
+    .ban-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, #1a0505 0%, #0a0000 100%);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+    }
+
+    .ban-overlay.active {
+      display: flex;
+    }
+
+    .ban-box {
+      text-align: center;
+      max-width: 600px;
+      padding: 60px;
+    }
+
+    .ban-icon {
+      font-size: 100px;
+      color: #ef4444;
+      margin-bottom: 30px;
+      animation: banPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes banPulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .ban-title {
+      font-size: 42px;
+      font-weight: bold;
+      color: #ef4444;
+      margin-bottom: 20px;
+    }
+
+    .ban-reason {
+      font-size: 18px;
+      color: #fca5a5;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+
+    .ban-info {
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="vanta-bg"></div>
+  <div id="status">Connecting...</div>
+
+  <div class="wrap">
+    <div id="sidebar">
+      <div class="tabs">
+        <div id="tabFriends" class="tab active">Friends</div>
+        <div id="tabGroups" class="tab">Groups</div>
+      </div>
+      <div id="friendsList" class="list"></div>
+      <div id="groupsList" class="list" style="display:none;"></div>
+      <div id="addFriendArea" style="margin-top:auto; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1);">
+        <input id="addFriendInput" placeholder="Enter username"
+          style="width:100%; margin-bottom:6px; box-sizing:border-box;" />
+        <button id="addFriendBtn" style="width:100%;">+ Add Friend</button>
+      </div>
+    </div>
+
+    <div id="main">
+      <div class="top">
+        <div>
+          <h3>Your ID: <span id="myId">loading...</span></h3>
+        </div>
+        <div><button id="changeBtn" class="small">Change Username</button></div>
+      </div>
+
+      <div id="chatBox">
+        <div style="color:#666; text-align:center; margin-top:20px;">Select a friend or group to start chatting</div>
+      </div>
+
+      <div id="controls">
+        <input id="targetInput" placeholder="target username or group id" style="flex:1;" />
+        <input id="textInput" placeholder="message" style="flex:3;" />
+        <button id="sendBtn">Send</button>
+      </div>
+
+      <div id="createGroupArea" style="margin-top:10px;border-top:1px solid #1a1a1a;padding-top:10px;">
+        <input id="groupLabel" placeholder="group label" class="small" />
+        <input id="groupMembers" placeholder="members (comma separated)" class="small" />
+        <button id="createBtn" class="small">Create Group</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-warning-overlay" id="adminWarningOverlay">
+    <div class="admin-warning-box">
+      <div class="admin-warning-icon">⚠️</div>
+      <div class="admin-warning-title">Admin Warning</div>
+      <div class="admin-warning-message" id="adminWarningMessage">
+        You have received a warning from an administrator.
+      </div>
+      <button class="admin-warning-dismiss" onclick="dismissWarning()">I Understand</button>
+    </div>
+  </div>
+
+  <div class="ban-overlay" id="banOverlay">
+    <div class="ban-box">
+      <div class="ban-icon">🚫</div>
+      <div class="ban-title">Access Denied</div>
+      <div class="ban-reason" id="banReason">
+        You have been banned from lightlink.
+      </div>
+      <div class="ban-info">
+        If you believe this is a mistake, please contact an administrator. (admin@lightlink.space)
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    const statusEl = document.getElementById("status");
+    const stored = localStorage.getItem("void_username");
+
+    const socket = io({
+      path: "/profiles/socket.io/",
+      auth: { username: stored || null },
+      transports: ["websocket"],
+    });
+
+    let myId = null;
+    let friends = [];
+    let groups = {};
+    let currentKey = null;
+
+    const friendsList = document.getElementById("friendsList");
+    const groupsList = document.getElementById("groupsList");
+    const myIdEl = document.getElementById("myId");
+    const chatBox = document.getElementById("chatBox");
+    const textInput = document.getElementById("textInput");
+    const targetInput = document.getElementById("targetInput");
+
+    function setStatus(msg, color = "#0f0") {
+      statusEl.textContent = msg;
+      statusEl.style.color = color;
+    }
+
+    function renderList(list, container, isGroup = false) {
+      container.innerHTML = "";
+      if (list.length === 0) {
+        const empty = document.createElement("div");
+        empty.style.color = "#666";
+        empty.style.fontStyle = "italic";
+        empty.textContent = isGroup ? "No groups yet" : "No friends yet";
+        container.appendChild(empty);
+        return;
+      }
+      list.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.textContent = isGroup ? `#${item.label}` : item;
+        div.onclick = () => {
+          document.querySelectorAll(".item").forEach(i => i.classList.remove("active"));
+          div.classList.add("active");
+          chatBox.innerHTML = "<div style='color:#666; text-align:center; margin-top:20px;'>Loading messages...</div>";
+          if (isGroup) {
+            currentKey = "group:" + item.id;
+            targetInput.value = `group:${item.id}`;
+            socket.emit("getGroup", { groupId: item.id });
+          } else {
+            currentKey = "dm:" + [myId, item].sort().join("|");
+            targetInput.value = item;
+            socket.emit("getDM", { target: item });
+          }
+        };
+        container.appendChild(div);
+      });
+    }
+
+    function renderMessage(entry) {
+      const div = document.createElement("div");
+      div.className = "msg-line " + (entry.from === myId ? "me" : "them");
+      const time = new Date(entry.ts || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      const isMe = entry.from === myId;
+      const reportHtml = isMe ? '' : `<span class="report-btn" onclick="reportMessage('${entry.from}', '${entry.text.replace(/'/g, "\\'").replace(/"/g, '&quot;')}')">Report</span>`;
+
+      div.innerHTML = `
+        <div class="bubble">
+          ${entry.text}
+          <div class="meta">
+            <span>${entry.from} • ${time}</span>
+            ${reportHtml}
+          </div>
+        </div>
+      `;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    window.reportMessage = function (target, text) {
+      if (confirm(`Are you sure you want to report ${target} for this message? (This will notify both parties)\n\n"${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`)) {
+        const context = currentKey.startsWith('group:') ? `Group: ${groups[currentKey.split(':')[1]]?.label || 'Unknown'}` : 'Direct Message';
+        socket.emit("reportMessage", { target, text, context });
+      }
+    };
+
+    let myKeyPair = null;
+    const sharedSecrets = {};
+    const publicKeyCache = {};
+    const pendingKeyRequests = {};
+
+    function arrayBufferToBase64(buffer) {
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      return window.btoa(binary);
+    }
+
+    function base64ToUint8Array(base64) {
+      const binary = window.atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    }
+
+    socket.on("publicKey", ({ username, publicKey }) => {
+      publicKeyCache[username] = publicKey;
+      if (pendingKeyRequests[username]) {
+        pendingKeyRequests[username].forEach(resolve => resolve(publicKey));
+        delete pendingKeyRequests[username];
+      }
+    });
+
+    async function fetchPublicKey(target) {
+      if (publicKeyCache[target] !== undefined) return publicKeyCache[target];
+      if (pendingKeyRequests[target]) {
+        return new Promise(resolve => pendingKeyRequests[target].push(resolve));
+      }
+      pendingKeyRequests[target] = [];
+      const promise = new Promise(resolve => pendingKeyRequests[target].push(resolve));
+      socket.emit("getPublicKey", { targetUsername: target });
+      return promise;
+    }
+
+    async function initE2EE() {
+      if (!myId) return;
+      const keyName = `e2ee_keys_${myId}`;
+      const stored = localStorage.getItem(keyName);
+
+      if (stored) {
+        try {
+          const { pub, priv } = JSON.parse(stored);
+          const publicKey = await window.crypto.subtle.importKey("jwk", pub, { name: "ECDH", namedCurve: "P-256" }, true, []);
+          const privateKey = await window.crypto.subtle.importKey("jwk", priv, { name: "ECDH", namedCurve: "P-256" }, false, ["deriveKey"]);
+          myKeyPair = { publicKey, privateKey };
+        } catch (e) {
+          console.error("e2ee keys failed", e);
+          localStorage.removeItem(keyName);
+        }
+      }
+
+      if (!myKeyPair) {
+        myKeyPair = await window.crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]);
+        const pub = await window.crypto.subtle.exportKey("jwk", myKeyPair.publicKey);
+        const priv = await window.crypto.subtle.exportKey("jwk", myKeyPair.privateKey);
+        localStorage.setItem(keyName, JSON.stringify({ pub, priv }));
+      }
+
+      const pubKeyRaw = await window.crypto.subtle.exportKey("spki", myKeyPair.publicKey);
+      const pubKeyB64 = arrayBufferToBase64(pubKeyRaw);
+      socket.emit("registerPublicKey", { publicKey: pubKeyB64 });
+    }
+
+    async function getSharedSecret(target, targetPubKeyB64) {
+      if (sharedSecrets[target]) return sharedSecrets[target];
+      const pubKeyRaw = base64ToUint8Array(targetPubKeyB64);
+      const targetPubKey = await window.crypto.subtle.importKey(
+        "spki", pubKeyRaw, { name: "ECDH", namedCurve: "P-256" }, true, []
+      );
+
+      const secret = await window.crypto.subtle.deriveKey(
+        { name: "ECDH", public: targetPubKey },
+        myKeyPair.privateKey,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+      );
+      sharedSecrets[target] = secret;
+      return secret;
+    }
+
+    async function encryptMessage(text, target) {
+      try {
+        const publicKey = await fetchPublicKey(target);
+        if (!publicKey) {
+          console.warn(`e2ee no pub key for ${target}`);
+          return { encrypted: false, text };
+        }
+
+        const secret = await getSharedSecret(target, publicKey);
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const encoded = new TextEncoder().encode(text);
+        const encrypted = await window.crypto.subtle.encrypt(
+          { name: "AES-GCM", iv },
+          secret,
+          encoded
+        );
+
+        const combined = new Uint8Array(iv.length + encrypted.byteLength);
+        combined.set(iv);
+        combined.set(new Uint8Array(encrypted), iv.length);
+
+        return {
+          encrypted: true,
+          data: arrayBufferToBase64(combined.buffer)
+        };
+      } catch (e) {
+        console.error("e2ee enc failed:", e);
+        return { encrypted: false, text };
+      }
+    }
+
+    async function decryptMessage(entry, forcedTarget = null) {
+      if (!entry.isEncrypted || !entry.data) return entry.text;
+
+      const target = forcedTarget || (entry.from === myId ? targetInput.value.trim() : entry.from);
+
+      if (!target || target.startsWith("group:")) {
+        console.warn("e2ee decryption aborted: target invalid or group");
+        return "[encrypted B)]";
+      }
+
+      try {
+        const publicKey = await fetchPublicKey(target);
+        if (!publicKey) {
+          console.error(`e2ee no pub key for ${target}`);
+          return "[decryption error: no pub key]";
+        }
+
+        const secret = await getSharedSecret(target, publicKey);
+        const combined = base64ToUint8Array(entry.data);
+        const iv = combined.slice(0, 12);
+        const data = combined.slice(12);
+
+        const decrypted = await window.crypto.subtle.decrypt(
+          { name: "AES-GCM", iv },
+          secret,
+          data
+        );
+        return new TextDecoder().decode(decrypted);
+      } catch (e) {
+        console.error("e2ee decrypt failed:", e);
+        return `[decryption error: ${e.message}]`;
+      }
+    }
+
+    function addSystem(msg) {
+      const div = document.createElement("div");
+      div.className = "msg-line them";
+      div.innerHTML = `<div class="bubble" style="opacity:0.7; background:#333;">System: ${msg}</div>`;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    let pushSubscription = null;
+
+    async function setupPushNotifications() {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.log('push not supported (browser issue so gl with that lil bro lollllll)');
+        return;
+      }
+
+      try {
+        const registration = await navigator.serviceWorker.register('/profiles/sw-push.js');
+
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          console.log('push perms denied');
+          return;
+        }
+
+        const response = await fetch('/profiles/math/vapid-public-key');
+        const { publicKey } = await response.json();
+
+        const urlBase64ToUint8Array = (base64String) => {
+          const padding = '='.repeat((4 - base64String.length % 4) % 4);
+          const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+          const rawData = window.atob(base64);
+          return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)));
+        };
+
+        pushSubscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey)
+        });
+
+        console.log('push enabled:', pushSubscription.endpoint);
+
+      } catch (error) {
+        console.error('push failed:', error);
+      }
+    }
+
+    async function savePushSubscription(username) {
+      if (!pushSubscription || !username) return;
+
+      try {
+        await fetch('/profiles/math/push-subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, subscription: pushSubscription })
+        });
+      } catch (error) {
+        console.error('no push notif:', error);
+      }
+    }
+
+    setupPushNotifications();
+
+    function showNotification(title, body) {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(title, { body, icon: "/profiles/icon.png" });
+      }
+    }
+
+    socket.on("connect", () => {
+      setStatus("Connected", "#0f0");
+    });
+
+    socket.on("connect_error", (err) => {
+      setStatus("Connection failed", "#f00");
+      console.error("connect error:", err);
+      addSystem("Connection failed: " + err.message);
+    });
+
+    socket.on("disconnect", () => {
+      setStatus("Disconnected", "#f80");
+      console.log("socket just gone :(");
+    });
+
+    socket.on("init", data => {
+      myId = data.username;
+      myIdEl.textContent = myId || "Unknown";
+      localStorage.setItem("void_username", myId);
+
+      friends = data.friends || [];
+      renderList(friends, friendsList);
+
+      groups = {};
+      (data.groups || []).forEach(g => groups[g.id] = g);
+      renderList(Object.values(groups), groupsList, true);
+
+      setStatus(`Online as ${myId}`, "#0f0");
+      chatBox.innerHTML = "<div style='color:#666; text-align:center; margin-top:20px;'>Select a friend or group to chat</div>";
+
+      savePushSubscription(myId);
+      initE2EE();
+    });
+
+    socket.on("dm", ({ key, entry }) => {
+      const parts = key.split("|");
+      const other = parts[0] === myId ? parts[1] : parts[0];
+      if (!friends.includes(other)) {
+        friends.push(other);
+        renderList(friends, friendsList);
+      }
+      if (currentKey === "dm:" + key) {
+        decryptMessage(entry, other).then(decryptedText => {
+          renderMessage({ ...entry, text: decryptedText });
+        });
+      }
+      if (entry.from !== myId) {
+        decryptMessage(entry, other).then(decryptedText => {
+          showNotification(`Message from ${entry.from}`, decryptedText);
+        });
+      }
+    });
+
+    socket.on("dmHistory", async ({ key, history }) => {
+      const parts = key.split("|");
+      const other = parts[0] === myId ? parts[1] : parts[0];
+
+      chatBox.innerHTML = "";
+      if (history.length === 0) {
+        chatBox.innerHTML = "<div style='color:#666; text-align:center; margin-top:20px;'>No messages yet</div>";
+      } else {
+        for (const entry of history) {
+          const decryptedText = await decryptMessage(entry, other);
+          renderMessage({ ...entry, text: decryptedText });
+        }
+      }
+    });
+
+    socket.on("groupCreated", g => {
+      groups[g.id] = g;
+      renderList(Object.values(groups), groupsList, true);
+      addSystem(`Group "${g.label}" created`);
+    });
+
+    socket.on("groupMsg", ({ groupId, entry }) => {
+      if (currentKey === "group:" + groupId) {
+        renderMessage(entry);
+      }
+    });
+
+    socket.on("groupHistory", ({ history }) => {
+      chatBox.innerHTML = "";
+      if (history.length === 0) {
+        chatBox.innerHTML = "<div style='color:#666; text-align:center; margin-top:20px;'>No messages yet</div>";
+      } else {
+        history.forEach(renderMessage);
+      }
+    });
+
+    socket.on("addFriend", ({ friend }) => {
+      if (!friends.includes(friend)) {
+        friends.push(friend);
+        renderList(friends, friendsList);
+        showNotification("New Friend", `${friend} is now your friend!`);
+      }
+    });
+
+    socket.on("system", ({ msg }) => addSystem(msg));
+
+    socket.on("adminWarning", ({ message }) => {
+      document.getElementById("adminWarningMessage").textContent = message || "You have received a warning from an administrator.";
+      document.getElementById("adminWarningOverlay").classList.add("active");
+
+      showNotification("⚠️ Admin Warning", message);
+
+      try {
+        const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleDAIF56n0N+vYxwFOJ7f3adnGghAn9/dpmIfBz+d3d6nZxkIPBv0Vq9oGgk9n93bpmMf");
+        audio.volume = 0.3;
+        audio.play().catch(() => { });
+      } catch (e) { }
+    });
+
+    window.dismissWarning = function () {
+      document.getElementById("adminWarningOverlay").classList.remove("active");
+    };
+
+    socket.on("forceDisconnect", ({ reason }) => {
+
+      localStorage.removeItem("void_username");
+
+      document.getElementById("banReason").textContent = reason || "You have been banned from this platform.";
+      document.getElementById("banOverlay").classList.add("active");
+
+      document.querySelector(".wrap").style.display = "none";
+      document.getElementById("status").style.display = "none";
+
+      showNotification("🚫 Access Denied", reason || "You have been banned.");
+    });
+
+    document.getElementById("sendBtn").onclick = async () => {
+      const target = targetInput.value.trim();
+      const text = textInput.value.trim();
+      if (!target || !text) return;
+      if (target.startsWith("group:")) {
+        const id = target.split(":")[1];
+        socket.emit("sendGroup", { groupId: id, text });
+      } else {
+        const enc = await encryptMessage(text, target);
+        if (enc.encrypted) {
+          socket.emit("sendDM", { target, isEncrypted: true, data: enc.data, text: "[Encrypted Message]" });
+        } else {
+          socket.emit("sendDM", { target, text });
+        }
+      }
+      textInput.value = "";
+    };
+
+    document.getElementById("addFriendBtn").onclick = () => {
+      const friendName = document.getElementById("addFriendInput").value.trim();
+      if (!friendName) return addSystem("Enter a username to add");
+      if (friendName === myId) return addSystem("You can't add yourself!");
+      if (friends.includes(friendName)) return addSystem(`${friendName} is already your friend`);
+
+      socket.emit("sendDM", { target: friendName, text: "Friend request sent!" });
+      document.getElementById("addFriendInput").value = "";
+      addSystem(`Friend request sent to ${friendName}`);
+    };
+
+    document.getElementById("createBtn").onclick = () => {
+      const label = document.getElementById("groupLabel").value.trim();
+      const members = document.getElementById("groupMembers").value.split(",").map(x => x.trim()).filter(Boolean);
+      if (!label) return addSystem("Group label required");
+      if (!members.includes(myId)) members.push(myId);
+      socket.emit("createGroup", { label, members });
+      document.getElementById("groupLabel").value = "";
+      document.getElementById("groupMembers").value = "";
+    };
+
+    document.getElementById("changeBtn").onclick = () => {
+      const newName = prompt("Enter new username:", myId);
+      if (newName && newName !== myId) {
+        localStorage.setItem("void_username", newName);
+        location.reload();
+      }
+    };
+
+    document.getElementById("tabFriends").onclick = () => {
+      document.getElementById("tabFriends").classList.add("active");
+      document.getElementById("tabGroups").classList.remove("active");
+      friendsList.style.display = "block";
+      groupsList.style.display = "none";
+    };
+    document.getElementById("tabGroups").onclick = () => {
+      document.getElementById("tabGroups").classList.add("active");
+      document.getElementById("tabFriends").classList.remove("active");
+      friendsList.style.display = "none";
+      groupsList.style.display = "block";
+    };
+
+    textInput.addEventListener("keypress", e => {
+      if (e.key === "Enter") document.getElementById("sendBtn").click();
+    });
+  </script>
+  <script>
+    VANTA.TOPOLOGY({
+      el: "#vanta-bg",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      scale: 1.00,
+      scaleMobile: 1.00,
+      color: 0x484828
+    });
+  </script>
+</body>
+
+</html>
